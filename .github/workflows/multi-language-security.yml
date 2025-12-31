@@ -61,63 +61,63 @@ jobs:
         run: |
           languages=()
 
-          # Node.js (supports npm, yarn, pnpm)
-          if [[ -f "package.json" ]] || [[ -f "package-lock.json" ]] || [[ -f "yarn.lock" ]] || [[ -f "pnpm-lock.yaml" ]]; then
+          # Node.js (supports npm, yarn, pnpm) - recursive search
+          if find . -name "package.json" -o -name "pnpm-lock.yaml" -o -name "yarn.lock" -o -name "package-lock.json" 2>/dev/null | grep -q .; then
             echo "has_node=true" >> $GITHUB_OUTPUT
             languages+=("node")
           else
             echo "has_node=false" >> $GITHUB_OUTPUT
           fi
 
-          # Python
-          if [[ -f "requirements.txt" ]] || [[ -f "Pipfile" ]] || [[ -f "pyproject.toml" ]] || [[ -f "setup.py" ]]; then
+          # Python - recursive search
+          if find . -name "requirements.txt" -o -name "Pipfile" -o -name "pyproject.toml" -o -name "setup.py" 2>/dev/null | grep -q .; then
             echo "has_python=true" >> $GITHUB_OUTPUT
             languages+=("python")
           else
             echo "has_python=false" >> $GITHUB_OUTPUT
           fi
 
-          # Go
-          if [[ -f "go.mod" ]] || [[ -f "go.sum" ]]; then
+          # Go - recursive search
+          if find . -name "go.mod" -o -name "go.sum" 2>/dev/null | grep -q .; then
             echo "has_go=true" >> $GITHUB_OUTPUT
             languages+=("go")
           else
             echo "has_go=false" >> $GITHUB_OUTPUT
           fi
 
-          # Java
-          if [[ -f "pom.xml" ]] || [[ -f "build.gradle" ]] || [[ -f "build.gradle.kts" ]]; then
+          # Java - recursive search
+          if find . -name "pom.xml" -o -name "build.gradle" -o -name "build.gradle.kts" 2>/dev/null | grep -q .; then
             echo "has_java=true" >> $GITHUB_OUTPUT
             languages+=("java")
           else
             echo "has_java=false" >> $GITHUB_OUTPUT
           fi
 
-          # Ruby
-          if [[ -f "Gemfile" ]] || [[ -f "Gemfile.lock" ]]; then
+          # Ruby - recursive search
+          if find . -name "Gemfile" -o -name "Gemfile.lock" 2>/dev/null | grep -q .; then
             echo "has_ruby=true" >> $GITHUB_OUTPUT
             languages+=("ruby")
           else
             echo "has_ruby=false" >> $GITHUB_OUTPUT
           fi
 
-          # .NET
-          if ls *.csproj 1> /dev/null 2>&1 || ls *.sln 1> /dev/null 2>&1; then
+          # .NET - recursive search
+          if find . -name "*.csproj" -o -name "*.sln" 2>/dev/null | grep -q .; then
             echo "has_dotnet=true" >> $GITHUB_OUTPUT
             languages+=("dotnet")
           else
             echo "has_dotnet=false" >> $GITHUB_OUTPUT
           fi
 
-          # Docker
-          if [[ -f "Dockerfile" ]] || [[ -f "docker-compose.yml" ]] || [[ -f "docker-compose.yaml" ]]; then
+          # Docker - recursive search
+          if find . -name "Dockerfile" -o -name "Dockerfile.*" -o -name "docker-compose.yml" -o -name "docker-compose.yaml" 2>/dev/null | grep -q .; then
             echo "has_docker=true" >> $GITHUB_OUTPUT
             languages+=("docker")
           else
             echo "has_docker=false" >> $GITHUB_OUTPUT
           fi
 
-          # Terraform - improved detection using find for nested .tf files
+          # Terraform - recursive search
           if find . -name "*.tf" -type f 2>/dev/null | grep -q . || [[ -d "terraform" ]]; then
             echo "has_terraform=true" >> $GITHUB_OUTPUT
             languages+=("terraform")
