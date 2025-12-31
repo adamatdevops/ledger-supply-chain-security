@@ -214,7 +214,7 @@ jobs:
         uses: snyk/actions/node@master
         continue-on-error: true
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_SCAN_TOKEN }}
         with:
           args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --sarif-file-output=snyk-node.sarif
 
@@ -291,7 +291,7 @@ jobs:
         uses: snyk/actions/python@master
         continue-on-error: true
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_SCAN_TOKEN }}
         with:
           args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --sarif-file-output=snyk-python.sarif
 
@@ -368,7 +368,7 @@ jobs:
         uses: snyk/actions/golang@master
         continue-on-error: true
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_SCAN_TOKEN }}
         with:
           args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --sarif-file-output=snyk-go.sarif
 
@@ -437,7 +437,7 @@ jobs:
         uses: snyk/actions/maven@master
         continue-on-error: true
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_SCAN_TOKEN }}
         with:
           args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --sarif-file-output=snyk-java.sarif
 
@@ -513,7 +513,7 @@ jobs:
         uses: snyk/actions/ruby@master
         continue-on-error: true
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_SCAN_TOKEN }}
         with:
           args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --sarif-file-output=snyk-ruby.sarif
 
@@ -567,7 +567,7 @@ jobs:
         uses: snyk/actions/dotnet@master
         continue-on-error: true
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_SCAN_TOKEN }}
         with:
           args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --sarif-file-output=snyk-dotnet.sarif
 
@@ -632,7 +632,7 @@ jobs:
         uses: snyk/actions/docker@master
         continue-on-error: true
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_SCAN_TOKEN }}
         with:
           image: scan-target:latest
           args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --file=Dockerfile --sarif-file-output=snyk-container.sarif
@@ -703,7 +703,7 @@ jobs:
         uses: snyk/actions/iac@master
         continue-on-error: true
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_SCAN_TOKEN }}
         with:
           args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --sarif-file-output=snyk-iac.sarif
 

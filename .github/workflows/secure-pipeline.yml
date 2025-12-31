@@ -149,7 +149,7 @@ jobs:
         uses: snyk/actions/node@master
         continue-on-error: true
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_SCAN_TOKEN }}
         with:
           args: --severity-threshold=high --sarif-file-output=snyk-deps.sarif
 
@@ -179,7 +179,7 @@ jobs:
         uses: snyk/actions/node@master
         continue-on-error: true
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_SCAN_TOKEN }}
         with:
           args: --all-projects --json-file-output=snyk-license.json
           # Note: Use Snyk policy file (.snyk) for license rules
@@ -300,7 +300,7 @@ jobs:
         uses: snyk/actions/docker@master
         continue-on-error: true
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_SCAN_TOKEN }}
         with:
           image: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }}'
           args: --severity-threshold=high --file=Dockerfile --sarif-file-output=snyk-container.sarif
