@@ -1,0 +1,16 @@
+# =============================================================================
+# .semgrepignore - Semgrep exclusions
+# =============================================================================
+# Exclude intentionally insecure examples from SAST scanning.
+# These files are tested by OPA/Conftest policy validation instead.
+# =============================================================================
+
+# Test fixtures with intentional violations (validated by Conftest)
+examples/invalid/
+
+# Node modules (if not already ignored)
+node_modules/
+
+# Test fixtures and mocks
+**/tests/fixtures/
+**/test/fixtures/
