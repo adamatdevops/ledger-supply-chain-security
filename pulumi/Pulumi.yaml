@@ -1,0 +1,9 @@
+name: ledger-platform
+runtime:
+  name: nodejs
+  options:
+    typescript: true
+description: Ledger Platform Infrastructure - AWS EKS deployment
+config:
+  aws:region:
+    default: us-east-1

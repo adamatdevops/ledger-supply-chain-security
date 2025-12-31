@@ -1,0 +1,9 @@
+# Development environment configuration
+config:
+  aws:region: us-east-1
+  ledger-platform:environment: dev
+  ledger-platform:clusterName: ledger-dev
+  ledger-platform:nodeInstanceType: t3.medium
+  ledger-platform:minNodes: "1"
+  ledger-platform:maxNodes: "3"
+  ledger-platform:desiredNodes: "2"
