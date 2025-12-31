@@ -24,6 +24,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:  # Manual trigger from GitHub UI
 
 # Prevent concurrent runs on the same branch to avoid race conditions
 concurrency:
