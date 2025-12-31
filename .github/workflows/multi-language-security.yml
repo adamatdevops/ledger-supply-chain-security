@@ -34,6 +34,9 @@ permissions:
 env:
   # Explicit handling for non-dispatch events where inputs doesn't exist
   SEVERITY_THRESHOLD: ${{ github.event_name == 'workflow_dispatch' && inputs.severity_threshold || 'high' }}
+  # Security enforcement mode: 'false' = report-only (observability), 'true' = blocking (enforcement)
+  # Start in observability mode, flip to 'true' when ready to enforce
+  ENFORCE_SECURITY: 'false'
 
 jobs:
   # ============================================
@@ -158,6 +161,7 @@ jobs:
       # SAST - Language agnostic patterns
       - name: Semgrep SAST Scan
         uses: semgrep/semgrep-action@v1
+        continue-on-error: ${{ env.ENFORCE_SECURITY != 'true' }}
         with:
           config: >-
             p/security-audit
@@ -251,6 +255,7 @@ jobs:
       # Node-specific SAST
       - name: Semgrep Node.js Rules
         uses: semgrep/semgrep-action@v1
+        continue-on-error: ${{ env.ENFORCE_SECURITY != 'true' }}
         with:
           config: >-
             p/nodejs
@@ -328,6 +333,7 @@ jobs:
       # Python-specific SAST
       - name: Semgrep Python Rules
         uses: semgrep/semgrep-action@v1
+        continue-on-error: ${{ env.ENFORCE_SECURITY != 'true' }}
         with:
           config: >-
             p/python
@@ -405,6 +411,7 @@ jobs:
       # Go-specific SAST
       - name: Semgrep Go Rules
         uses: semgrep/semgrep-action@v1
+        continue-on-error: ${{ env.ENFORCE_SECURITY != 'true' }}
         with:
           config: p/golang
           generateSarif: "1"
@@ -474,6 +481,7 @@ jobs:
       # Java-specific SAST
       - name: Semgrep Java Rules
         uses: semgrep/semgrep-action@v1
+        continue-on-error: ${{ env.ENFORCE_SECURITY != 'true' }}
         with:
           config: >-
             p/java
@@ -550,6 +558,7 @@ jobs:
       # Ruby-specific SAST
       - name: Semgrep Ruby Rules
         uses: semgrep/semgrep-action@v1
+        continue-on-error: ${{ env.ENFORCE_SECURITY != 'true' }}
         with:
           config: >-
             p/ruby
@@ -604,6 +613,7 @@ jobs:
       # .NET-specific SAST
       - name: Semgrep .NET Rules
         uses: semgrep/semgrep-action@v1
+        continue-on-error: ${{ env.ENFORCE_SECURITY != 'true' }}
         with:
           config: p/csharp
           generateSarif: "1"

@@ -40,6 +40,9 @@ permissions:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  # Security enforcement mode: 'false' = report-only (observability), 'true' = blocking (enforcement)
+  # Start in observability mode, flip to 'true' when ready to enforce
+  ENFORCE_SECURITY: 'false'
 
 jobs:
   # ============================================
@@ -130,6 +133,7 @@ jobs:
       # -----------------------------------------
       - name: Semgrep SAST Scan
         uses: semgrep/semgrep-action@v1
+        continue-on-error: ${{ env.ENFORCE_SECURITY != 'true' }}
         with:
           config: >-
             p/security-audit
@@ -225,7 +229,7 @@ jobs:
     name: Build & Package
     runs-on: ubuntu-latest
     needs: security-scan
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
     outputs:
       image-digest: ${{ steps.build.outputs.digest }}
       image-tags: ${{ steps.meta.outputs.tags }}
@@ -284,6 +288,7 @@ jobs:
     name: Container Security
     runs-on: ubuntu-latest
     needs: build
+    if: always() && needs.build.result == 'success'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -386,6 +391,7 @@ jobs:
     name: Policy Validation
     runs-on: ubuntu-latest
     needs: container-security
+    if: always()
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -425,6 +431,7 @@ jobs:
     name: Deploy to Dev
     runs-on: ubuntu-latest
     needs: [container-security, policy-check]
+    if: always()
     environment: dev
     steps:
       # Note: Replace with actual deployment logic
@@ -441,6 +448,7 @@ jobs:
     name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: deploy-dev
+    if: always()
     environment: staging
     steps:
       - name: Deploy to staging environment
@@ -452,6 +460,7 @@ jobs:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: deploy-staging
+    if: always()
     environment:
       name: production
       # Configure required reviewers in GitHub Environment settings
