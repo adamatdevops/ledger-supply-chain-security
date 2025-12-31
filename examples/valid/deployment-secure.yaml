@@ -1,0 +1,89 @@
+# =============================================================================
+# Valid Deployment Example
+# =============================================================================
+# This deployment passes all OPA policy checks.
+# Use as reference for secure Kubernetes deployments.
+#
+# Test: conftest test examples/valid/ -p src/policies/
+# =============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secure-payments-api
+  namespace: staging
+  labels:
+    app: payments-api
+    version: v1.2.0
+    team: platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: payments-api
+  template:
+    metadata:
+      labels:
+        app: payments-api
+        version: v1.2.0
+        team: platform
+    spec:
+      serviceAccountName: payments-api-sa
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: api
+          image: ghcr.io/acme-corp/payments-api:v1.2.0
+          imagePullPolicy: Always
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: "8080"
+            - name: LOG_LEVEL
+              value: "info"
+            # Secrets from Kubernetes Secrets - NOT hardcoded
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: payments-db-credentials
+                  key: password
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

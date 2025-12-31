@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "_comment": "Valid container configuration - passes all OPA policy checks",
+  "image": {
+    "name": "ghcr.io/acme-corp/payments-api:v1.2.0",
+    "base": "gcr.io/distroless/nodejs:18"
+  },
+  "config": {
+    "user": "1000",
+    "privileged": false,
+    "healthcheck": {
+      "test": ["CMD", "curl", "-f", "http://localhost:8080/health"],
+      "interval": "30s",
+      "timeout": "10s",
+      "retries": 3
+    },
+    "resources": {
+      "limits": {
+        "memory": "256Mi",
+        "cpu": "200m"
+      },
+      "requests": {
+        "memory": "128Mi",
+        "cpu": "100m"
+      }
+    },
+    "env": {
+      "NODE_ENV": "production",
+      "PORT": "8080",
+      "LOG_LEVEL": "info"
+    }
+  },
+  "vulnerabilities": {
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 5
+  },
+  "signature": {
+    "verified": true,
+    "signer": "cosign",
+    "timestamp": "2024-12-31T10:00:00Z"
+  },
+  "sbom": {
+    "format": "cyclonedx",
+    "version": "1.4",
+    "components": [
+      {"name": "express", "version": "4.18.2", "type": "library"},
+      {"name": "helmet", "version": "7.1.0", "type": "library"}
+    ]
+  },
+  "policy": {
+    "require_signature": true,
+    "require_sbom": true,
+    "max_high_vulns": 5
+  }
+}

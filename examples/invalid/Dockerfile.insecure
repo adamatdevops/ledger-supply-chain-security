@@ -1,0 +1,51 @@
+# =============================================================================
+# INSECURE Dockerfile - FOR TESTING ONLY
+# =============================================================================
+# This Dockerfile intentionally violates security best practices.
+# Used to demonstrate Hadolint, Snyk container scanning, and policy gates.
+#
+# Security Violations:
+# - Uses full OS base image (not minimal)
+# - Runs as root (no USER instruction)
+# - No HEALTHCHECK
+# - Installs unnecessary packages
+# - Uses :latest tag
+# - Hardcoded secrets
+# - Runs with elevated privileges
+# =============================================================================
+
+# VIOLATION: Using :latest tag
+FROM ubuntu:latest
+
+# VIOLATION: Running as root (no USER instruction to change)
+
+# VIOLATION: Installing unnecessary packages, using apt without version pinning
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    vim \
+    net-tools \
+    telnet \
+    ssh \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# VIOLATION: Copying everything including potential secrets
+COPY . .
+
+# VIOLATION: Hardcoded secrets in environment variables
+ENV DATABASE_PASSWORD=supersecret123
+ENV API_KEY=sk-1234567890abcdef
+ENV AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+
+# VIOLATION: Downloading and executing remote script (supply chain risk)
+RUN curl -sSL https://example.com/install.sh | bash
+
+# VIOLATION: No HEALTHCHECK defined
+
+# VIOLATION: Exposing multiple unnecessary ports
+EXPOSE 22 80 443 3306 5432 6379 27017
+
+# VIOLATION: Running application as root with shell
+CMD ["/bin/bash", "-c", "node server.js"]

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "_comment": "INSECURE: Using :latest tag and unapproved registry - FOR TESTING ONLY",
+  "_violations": [
+    "Using :latest tag (implicit)",
+    "Unapproved registry (docker.io)",
+    "Missing SBOM when required"
+  ],
+  "image": {
+    "name": "docker.io/company/app",
+    "base": "node:20"
+  },
+  "config": {
+    "user": "node",
+    "privileged": false,
+    "healthcheck": {
+      "test": ["CMD", "curl", "-f", "http://localhost:3000/health"]
+    },
+    "resources": {
+      "limits": {
+        "memory": "256Mi",
+        "cpu": "200m"
+      }
+    },
+    "env": {
+      "NODE_ENV": "production"
+    }
+  },
+  "vulnerabilities": {
+    "critical": 0,
+    "high": 2,
+    "medium": 8,
+    "low": 15
+  },
+  "signature": {
+    "verified": true
+  },
+  "sbom": null,
+  "policy": {
+    "require_signature": true,
+    "require_sbom": true,
+    "max_high_vulns": 5
+  }
+}

@@ -1,0 +1,54 @@
+# =============================================================================
+# Snyk Policy File
+# =============================================================================
+# Defines vulnerability ignores, patches, and license policies.
+# Used by Snyk CLI and CI/CD integrations.
+#
+# Documentation: https://docs.snyk.io/snyk-cli/commands/policy
+# =============================================================================
+
+version: v1.25.0
+
+# =============================================================================
+# Vulnerability Ignores
+# =============================================================================
+# Temporary ignores for vulnerabilities that cannot be immediately fixed.
+# Each ignore MUST have:
+#   - reason: Why this is being ignored
+#   - expires: When this ignore expires (max 90 days recommended)
+#   - created: When this ignore was added
+#
+# Example:
+# ignore:
+#   'SNYK-JS-LODASH-1234567':
+#     - '*':
+#         reason: 'No fix available, not exploitable in our context'
+#         expires: 2024-06-01T00:00:00.000Z
+#         created: 2024-03-01T00:00:00.000Z
+
+ignore: {}
+
+# =============================================================================
+# Patches
+# =============================================================================
+# Snyk-provided patches for vulnerabilities without updates
+# Automatically managed by `snyk wizard`
+
+patch: {}
+
+# =============================================================================
+# Exclude Paths
+# =============================================================================
+# Paths to exclude from scanning
+
+exclude:
+  global:
+    - 'node_modules'
+    - 'vendor'
+    - 'dist'
+    - 'build'
+    - '.git'
+    - 'coverage'
+    - '**/*.test.js'
+    - '**/*.spec.js'
+    - 'tests/fixtures/**'

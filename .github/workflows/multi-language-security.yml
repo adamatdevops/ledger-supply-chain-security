@@ -1,0 +1,834 @@
+name: Multi-Language Security Scan
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run weekly security audit on Sundays at 2 AM
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      severity_threshold:
+        description: 'Minimum severity to fail on'
+        required: false
+        default: 'high'
+        type: choice
+        options:
+          - low
+          - medium
+          - high
+          - critical
+
+# Prevent overlapping security scans
+concurrency:
+  group: security-scan-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
+env:
+  # Explicit handling for non-dispatch events where inputs doesn't exist
+  SEVERITY_THRESHOLD: ${{ github.event_name == 'workflow_dispatch' && inputs.severity_threshold || 'high' }}
+
+jobs:
+  # ============================================
+  # Detect Languages in Repository
+  # ============================================
+  detect-languages:
+    name: Detect Languages
+    runs-on: ubuntu-latest
+    outputs:
+      languages: ${{ steps.detect.outputs.languages }}
+      has_node: ${{ steps.detect.outputs.has_node }}
+      has_python: ${{ steps.detect.outputs.has_python }}
+      has_go: ${{ steps.detect.outputs.has_go }}
+      has_java: ${{ steps.detect.outputs.has_java }}
+      has_ruby: ${{ steps.detect.outputs.has_ruby }}
+      has_dotnet: ${{ steps.detect.outputs.has_dotnet }}
+      has_docker: ${{ steps.detect.outputs.has_docker }}
+      has_terraform: ${{ steps.detect.outputs.has_terraform }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect project languages
+        id: detect
+        run: |
+          languages=()
+
+          # Node.js (supports npm, yarn, pnpm)
+          if [[ -f "package.json" ]] || [[ -f "package-lock.json" ]] || [[ -f "yarn.lock" ]] || [[ -f "pnpm-lock.yaml" ]]; then
+            echo "has_node=true" >> $GITHUB_OUTPUT
+            languages+=("node")
+          else
+            echo "has_node=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Python
+          if [[ -f "requirements.txt" ]] || [[ -f "Pipfile" ]] || [[ -f "pyproject.toml" ]] || [[ -f "setup.py" ]]; then
+            echo "has_python=true" >> $GITHUB_OUTPUT
+            languages+=("python")
+          else
+            echo "has_python=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Go
+          if [[ -f "go.mod" ]] || [[ -f "go.sum" ]]; then
+            echo "has_go=true" >> $GITHUB_OUTPUT
+            languages+=("go")
+          else
+            echo "has_go=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Java
+          if [[ -f "pom.xml" ]] || [[ -f "build.gradle" ]] || [[ -f "build.gradle.kts" ]]; then
+            echo "has_java=true" >> $GITHUB_OUTPUT
+            languages+=("java")
+          else
+            echo "has_java=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Ruby
+          if [[ -f "Gemfile" ]] || [[ -f "Gemfile.lock" ]]; then
+            echo "has_ruby=true" >> $GITHUB_OUTPUT
+            languages+=("ruby")
+          else
+            echo "has_ruby=false" >> $GITHUB_OUTPUT
+          fi
+
+          # .NET
+          if ls *.csproj 1> /dev/null 2>&1 || ls *.sln 1> /dev/null 2>&1; then
+            echo "has_dotnet=true" >> $GITHUB_OUTPUT
+            languages+=("dotnet")
+          else
+            echo "has_dotnet=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Docker
+          if [[ -f "Dockerfile" ]] || [[ -f "docker-compose.yml" ]] || [[ -f "docker-compose.yaml" ]]; then
+            echo "has_docker=true" >> $GITHUB_OUTPUT
+            languages+=("docker")
+          else
+            echo "has_docker=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Terraform - improved detection using find for nested .tf files
+          if find . -name "*.tf" -type f 2>/dev/null | grep -q . || [[ -d "terraform" ]]; then
+            echo "has_terraform=true" >> $GITHUB_OUTPUT
+            languages+=("terraform")
+          else
+            echo "has_terraform=false" >> $GITHUB_OUTPUT
+          fi
+
+          echo "languages=${languages[*]}" >> $GITHUB_OUTPUT
+          echo "Detected languages: ${languages[*]}"
+
+  # ============================================
+  # Universal Security Scans (All Languages)
+  # ============================================
+  universal-scans:
+    name: Universal Security Scans
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Secret Detection - Always runs
+      - name: Gitleaks Secret Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # SAST - Language agnostic patterns
+      - name: Semgrep SAST Scan
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/owasp-top-ten
+            p/secrets
+            p/command-injection
+            p/sql-injection
+            p/xss
+          generateSarif: "1"
+
+      - name: Upload Semgrep SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+        continue-on-error: true
+
+  # ============================================
+  # Node.js Security Scan
+  # ============================================
+  node-security:
+    name: Node.js Security
+    runs-on: ubuntu-latest
+    needs: detect-languages
+    if: needs.detect-languages.outputs.has_node == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # pnpm audit
+      - name: PNPM Audit
+        run: pnpm audit --audit-level ${{ env.SEVERITY_THRESHOLD }}
+        continue-on-error: true
+
+      # Snyk for Node
+      - name: Snyk Node.js Scan
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --sarif-file-output=snyk-node.sarif
+
+      - name: Upload Snyk Node results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk-node.sarif
+          category: snyk-node
+        continue-on-error: true
+
+      # Node-specific SAST
+      - name: Semgrep Node.js Rules
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/nodejs
+            p/typescript
+            p/react
+            p/expressjs
+          generateSarif: "1"
+
+      - name: Upload Semgrep Node SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep-node
+        continue-on-error: true
+
+  # ============================================
+  # Python Security Scan
+  # ============================================
+  python-security:
+    name: Python Security
+    runs-on: ubuntu-latest
+    needs: detect-languages
+    if: needs.detect-languages.outputs.has_python == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install safety bandit
+
+      # Safety check for known vulnerabilities
+      - name: Safety Vulnerability Check
+        run: safety check --full-report
+        continue-on-error: true
+
+      # Bandit SAST for Python
+      - name: Bandit Security Scan
+        run: bandit -r . -f sarif -o bandit.sarif --severity-level medium
+        continue-on-error: true
+
+      - name: Upload Bandit results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: bandit.sarif
+          category: bandit
+        continue-on-error: true
+
+      # Snyk for Python
+      - name: Snyk Python Scan
+        uses: snyk/actions/python@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --sarif-file-output=snyk-python.sarif
+
+      - name: Upload Snyk Python results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk-python.sarif
+          category: snyk-python
+        continue-on-error: true
+
+      # Python-specific SAST
+      - name: Semgrep Python Rules
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/python
+            p/flask
+            p/django
+            p/fastapi
+          generateSarif: "1"
+
+      - name: Upload Semgrep Python SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep-python
+        continue-on-error: true
+
+  # ============================================
+  # Go Security Scan
+  # ============================================
+  go-security:
+    name: Go Security
+    runs-on: ubuntu-latest
+    needs: detect-languages
+    if: needs.detect-languages.outputs.has_go == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      # govulncheck - Official Go vulnerability checker
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Go Vulnerability Check
+        run: govulncheck ./...
+        continue-on-error: true
+
+      # gosec - Go security checker
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+
+      - name: GoSec Security Scan
+        run: gosec -fmt sarif -out gosec.sarif ./...
+        continue-on-error: true
+
+      - name: Upload GoSec results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: gosec.sarif
+          category: gosec
+        continue-on-error: true
+
+      # Snyk for Go
+      - name: Snyk Go Scan
+        uses: snyk/actions/golang@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --sarif-file-output=snyk-go.sarif
+
+      - name: Upload Snyk Go results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk-go.sarif
+          category: snyk-go
+        continue-on-error: true
+
+      # Go-specific SAST
+      - name: Semgrep Go Rules
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: p/golang
+          generateSarif: "1"
+
+      - name: Upload Semgrep Go SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep-go
+        continue-on-error: true
+
+  # ============================================
+  # Java Security Scan
+  # ============================================
+  java-security:
+    name: Java Security
+    runs-on: ubuntu-latest
+    needs: detect-languages
+    if: needs.detect-languages.outputs.has_java == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+
+      # OWASP Dependency Check
+      - name: OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'project'
+          path: '.'
+          format: 'SARIF'
+          out: 'dependency-check'
+        continue-on-error: true
+
+      - name: Upload OWASP DC results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: dependency-check/dependency-check-report.sarif
+          category: owasp-dc
+        continue-on-error: true
+
+      # Snyk for Java
+      - name: Snyk Java Scan
+        uses: snyk/actions/maven@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --sarif-file-output=snyk-java.sarif
+
+      - name: Upload Snyk Java results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk-java.sarif
+          category: snyk-java
+        continue-on-error: true
+
+      # Java-specific SAST
+      - name: Semgrep Java Rules
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/java
+            p/spring
+          generateSarif: "1"
+
+      - name: Upload Semgrep Java SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep-java
+        continue-on-error: true
+
+  # ============================================
+  # Ruby Security Scan
+  # ============================================
+  ruby-security:
+    name: Ruby Security
+    runs-on: ubuntu-latest
+    needs: detect-languages
+    if: needs.detect-languages.outputs.has_ruby == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      # bundler-audit
+      - name: Install bundler-audit
+        run: gem install bundler-audit
+
+      - name: Bundle Audit
+        run: bundle-audit check --update
+        continue-on-error: true
+
+      # Brakeman for Rails
+      - name: Install Brakeman
+        run: gem install brakeman
+
+      - name: Brakeman Security Scan
+        run: brakeman -f sarif -o brakeman.sarif || true
+        continue-on-error: true
+
+      - name: Upload Brakeman results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: brakeman.sarif
+          category: brakeman
+        continue-on-error: true
+
+      # Snyk for Ruby
+      - name: Snyk Ruby Scan
+        uses: snyk/actions/ruby@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --sarif-file-output=snyk-ruby.sarif
+
+      - name: Upload Snyk Ruby results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk-ruby.sarif
+          category: snyk-ruby
+        continue-on-error: true
+
+      # Ruby-specific SAST
+      - name: Semgrep Ruby Rules
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/ruby
+            p/rails
+          generateSarif: "1"
+
+      - name: Upload Semgrep Ruby SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep-ruby
+        continue-on-error: true
+
+  # ============================================
+  # .NET Security Scan
+  # ============================================
+  dotnet-security:
+    name: .NET Security
+    runs-on: ubuntu-latest
+    needs: detect-languages
+    if: needs.detect-languages.outputs.has_dotnet == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      # Snyk for .NET
+      - name: Snyk .NET Scan
+        uses: snyk/actions/dotnet@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --sarif-file-output=snyk-dotnet.sarif
+
+      - name: Upload Snyk .NET results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk-dotnet.sarif
+          category: snyk-dotnet
+        continue-on-error: true
+
+      # .NET-specific SAST
+      - name: Semgrep .NET Rules
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: p/csharp
+          generateSarif: "1"
+
+      - name: Upload Semgrep .NET SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep-dotnet
+        continue-on-error: true
+
+  # ============================================
+  # Container Security Scan
+  # ============================================
+  container-security:
+    name: Container Security
+    runs-on: ubuntu-latest
+    needs: detect-languages
+    if: needs.detect-languages.outputs.has_docker == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Hadolint - Dockerfile linting
+      - name: Hadolint Dockerfile Lint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          format: sarif
+          output-file: hadolint.sarif
+        continue-on-error: true
+
+      - name: Upload Hadolint results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: hadolint.sarif
+          category: hadolint
+        continue-on-error: true
+
+      # Build image for scanning
+      - name: Build Docker image
+        run: docker build -t scan-target:latest .
+
+      # Snyk Container
+      - name: Snyk Container Scan
+        uses: snyk/actions/docker@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: scan-target:latest
+          args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --file=Dockerfile --sarif-file-output=snyk-container.sarif
+
+      - name: Upload Snyk Container results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk-container.sarif
+          category: snyk-container
+        continue-on-error: true
+
+      # Dockle - Container best practices
+      - name: Dockle Container Lint
+        uses: erzz/dockle-action@v1
+        with:
+          image: scan-target:latest
+          failure-threshold: high
+        continue-on-error: true
+
+  # ============================================
+  # Infrastructure as Code Security
+  # ============================================
+  iac-security:
+    name: IaC Security
+    runs-on: ubuntu-latest
+    needs: detect-languages
+    if: needs.detect-languages.outputs.has_terraform == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # tfsec - Terraform security scanner
+      - name: tfsec Security Scan
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          sarif_file: tfsec.sarif
+        continue-on-error: true
+
+      - name: Upload tfsec results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: tfsec.sarif
+          category: tfsec
+        continue-on-error: true
+
+      # Checkov - IaC scanner
+      - name: Checkov IaC Scan
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+          framework: terraform
+          output_format: sarif
+          output_file_path: checkov.sarif
+        continue-on-error: true
+
+      - name: Upload Checkov results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: checkov.sarif
+          category: checkov
+        continue-on-error: true
+
+      # Snyk IaC
+      - name: Snyk IaC Scan
+        uses: snyk/actions/iac@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --sarif-file-output=snyk-iac.sarif
+
+      - name: Upload Snyk IaC results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk-iac.sarif
+          category: snyk-iac
+        continue-on-error: true
+
+  # ============================================
+  # Governance Gate (Central Policy Enforcement)
+  # ============================================
+  # This job serves as the single enforcement point for security policy.
+  # Currently in "report-only" mode - can be flipped to "blocking" mode
+  # when the organization is ready to enforce security gates.
+  governance-gate:
+    name: Governance Gate
+    runs-on: ubuntu-latest
+    needs:
+      - universal-scans
+      - node-security
+      - python-security
+      - go-security
+      - java-security
+      - ruby-security
+      - dotnet-security
+      - container-security
+      - iac-security
+    if: always()
+    steps:
+      - name: Policy Gate Evaluation
+        run: |
+          echo "## Governance Gate" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Policy Enforcement Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "This job serves as the central policy enforcement point." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Current Mode:** Report-Only (observability)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "In production, this job would:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Parse SARIF reports from all security scanners" >> $GITHUB_STEP_SUMMARY
+          echo "2. Evaluate findings against org-defined policy" >> $GITHUB_STEP_SUMMARY
+          echo "3. Block or allow based on severity threshold: **${{ env.SEVERITY_THRESHOLD }}**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To enable blocking mode, configure the policy gate in your organization settings." >> $GITHUB_STEP_SUMMARY
+
+      # Placeholder for future policy enforcement
+      # Uncomment and configure when ready to enforce
+      # - name: Enforce Security Policy
+      #   run: |
+      #     # Parse SARIF files and evaluate against policy
+      #     # Example: use a policy engine like OPA or custom script
+      #     # if findings exceed threshold, exit 1 to block
+
+  # ============================================
+  # Security Summary Report
+  # ============================================
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs:
+      - detect-languages
+      - universal-scans
+      - node-security
+      - python-security
+      - go-security
+      - java-security
+      - ruby-security
+      - dotnet-security
+      - container-security
+      - iac-security
+      - governance-gate
+    if: always()
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Languages Detected" >> $GITHUB_STEP_SUMMARY
+          echo "- Node.js: ${{ needs.detect-languages.outputs.has_node }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Python: ${{ needs.detect-languages.outputs.has_python }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Go: ${{ needs.detect-languages.outputs.has_go }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Java: ${{ needs.detect-languages.outputs.has_java }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Ruby: ${{ needs.detect-languages.outputs.has_ruby }}" >> $GITHUB_STEP_SUMMARY
+          echo "- .NET: ${{ needs.detect-languages.outputs.has_dotnet }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Docker: ${{ needs.detect-languages.outputs.has_docker }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Terraform: ${{ needs.detect-languages.outputs.has_terraform }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "| Scan | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Universal Scans | ${{ needs.universal-scans.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Node.js | ${{ needs.node-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Python | ${{ needs.python-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Go | ${{ needs.go-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Java | ${{ needs.java-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Ruby | ${{ needs.ruby-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| .NET | ${{ needs.dotnet-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Container | ${{ needs.container-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| IaC | ${{ needs.iac-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Governance Gate | ${{ needs.governance-gate.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- Severity Threshold: **${{ env.SEVERITY_THRESHOLD }}**" >> $GITHUB_STEP_SUMMARY
+          echo "- Triggered by: **${{ github.event_name }}**" >> $GITHUB_STEP_SUMMARY
+          echo "- Enforcement Mode: **report-only** (no blocking on findings yet)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> To switch to gated mode, configure the governance-gate job to enforce policy." >> $GITHUB_STEP_SUMMARY
+
+      - name: Check for failures
+        if: |
+          needs.universal-scans.result == 'failure' ||
+          needs.node-security.result == 'failure' ||
+          needs.python-security.result == 'failure' ||
+          needs.go-security.result == 'failure' ||
+          needs.java-security.result == 'failure' ||
+          needs.ruby-security.result == 'failure' ||
+          needs.dotnet-security.result == 'failure' ||
+          needs.container-security.result == 'failure' ||
+          needs.iac-security.result == 'failure'
+        run: |
+          echo "::warning::One or more security scans reported issues. Check the Security tab for details."
+          # In report-only mode, we warn but don't fail
+          # Uncomment the next line to enable blocking mode:
+          # exit 1

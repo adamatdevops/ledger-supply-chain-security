@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+.pnpm-store/
+.pnpm-debug.log*
+
+# Test files
+tests/
+*.test.js
+coverage/
+
+# Development files
+.eslintrc*
+.prettierrc*
+.editorconfig
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+docs/
+
+# CI/CD
+.github/
+Makefile

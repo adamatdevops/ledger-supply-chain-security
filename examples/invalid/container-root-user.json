@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "_comment": "INSECURE: Container running as root - FOR TESTING ONLY",
+  "_violations": [
+    "Running as root user",
+    "Privileged mode enabled",
+    "Missing healthcheck",
+    "Secrets in environment variables"
+  ],
+  "image": {
+    "name": "docker.io/nginx:latest",
+    "base": "ubuntu:22.04"
+  },
+  "config": {
+    "user": "root",
+    "privileged": true,
+    "healthcheck": null,
+    "resources": {
+      "limits": {
+        "memory": null,
+        "cpu": null
+      }
+    },
+    "env": {
+      "DATABASE_PASSWORD": "admin123",
+      "AWS_SECRET_KEY": "AKIAIOSFODNN7EXAMPLE",
+      "API_TOKEN": "ghp_xxxxxxxxxxxxxxxxxxxx"
+    }
+  },
+  "vulnerabilities": {
+    "critical": 3,
+    "high": 12,
+    "medium": 45,
+    "low": 89
+  },
+  "signature": {
+    "verified": false
+  },
+  "sbom": null,
+  "policy": {
+    "require_signature": true,
+    "require_sbom": true,
+    "max_high_vulns": 5
+  }
+}

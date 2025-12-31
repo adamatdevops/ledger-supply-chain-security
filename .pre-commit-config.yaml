@@ -1,0 +1,142 @@
+# =============================================================================
+# Pre-commit Configuration
+# =============================================================================
+# Local security and quality checks before code leaves developer machine.
+# Install: pip install pre-commit && pre-commit install
+#
+# Documentation: https://pre-commit.com
+# =============================================================================
+
+# Global settings
+default_stages: [commit]
+fail_fast: false
+
+repos:
+  # ---------------------------------------------------------------------------
+  # General Hooks
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ['--unsafe']  # Allow custom tags
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: check-case-conflict
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  # ---------------------------------------------------------------------------
+  # Secret Detection (Gitleaks)
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.1
+    hooks:
+      - id: gitleaks
+        name: Detect secrets with Gitleaks
+        description: Detect hardcoded secrets in code
+        entry: gitleaks protect --staged --config=.gitleaks.toml
+        language: golang
+        pass_filenames: false
+
+  # ---------------------------------------------------------------------------
+  # Commit Message Linting
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+    rev: v9.10.0
+    hooks:
+      - id: commitlint
+        name: Lint commit message
+        stages: [commit-msg]
+        additional_dependencies: ['@commitlint/config-conventional']
+
+  # ---------------------------------------------------------------------------
+  # YAML Linting
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.33.0
+    hooks:
+      - id: yamllint
+        name: Lint YAML files
+        args: ['-c', '.yamllint.yaml']
+
+  # ---------------------------------------------------------------------------
+  # Markdown Linting
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.38.0
+    hooks:
+      - id: markdownlint
+        name: Lint Markdown files
+        args: ['--fix']
+
+  # ---------------------------------------------------------------------------
+  # Shell Script Linting
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.6
+    hooks:
+      - id: shellcheck
+        name: Lint shell scripts
+        args: ['--severity=warning']
+
+  # ---------------------------------------------------------------------------
+  # Dockerfile Linting
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        name: Lint Dockerfile
+        entry: hadolint
+        language: docker_image
+        types: [dockerfile]
+
+  # ---------------------------------------------------------------------------
+  # Terraform/OpenTofu Formatting
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.86.0
+    hooks:
+      - id: terraform_fmt
+        name: Format Terraform files
+      - id: terraform_validate
+        name: Validate Terraform
+      - id: terraform_tflint
+        name: Lint Terraform with tflint
+
+  # ---------------------------------------------------------------------------
+  # Security Scanning (Semgrep - lightweight check)
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/semgrep/semgrep
+    rev: v1.52.0
+    hooks:
+      - id: semgrep
+        name: Semgrep security scan
+        args: ['--config', 'p/secrets', '--config', 'p/security-audit', '--error']
+        # Note: Full SAST scan runs in CI; this is a quick check
+
+  # ---------------------------------------------------------------------------
+  # Rego/OPA Policy Formatting
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/anderseknert/pre-commit-opa
+    rev: v1.5.1
+    hooks:
+      - id: opa-fmt
+        name: Format Rego policies
+      - id: opa-check
+        name: Check Rego syntax
+
+# =============================================================================
+# CI Skip Configuration
+# =============================================================================
+# To skip hooks in CI (they run separately):
+# SKIP=gitleaks,semgrep git commit -m "message"
+#
+# To skip all hooks:
+# git commit --no-verify -m "message"

@@ -1,0 +1,21 @@
+# =============================================================================
+# Gitleaks Ignore File
+# =============================================================================
+# Fingerprints of known false positives to ignore.
+# Format: <fingerprint> or <fingerprint>:<description>
+#
+# Generate fingerprints: gitleaks detect --report-format json | jq '.[] | .Fingerprint'
+# Documentation: https://github.com/gitleaks/gitleaks#gitleaksignore
+# =============================================================================
+
+# Example false positive fingerprints (replace with actual values):
+# abc123def456:docs/examples/sample-config.yaml - Example API key placeholder
+
+# Documentation examples - not real secrets
+# These are intentionally fake values used in documentation
+
+# Test fixtures - synthetic test data
+# tests/fixtures/mock-credentials.json contains fake test credentials
+
+# Package lock files sometimes trigger false positives
+# package-lock.json:123 - npm integrity hash, not a secret

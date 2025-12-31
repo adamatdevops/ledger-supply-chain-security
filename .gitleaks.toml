@@ -1,0 +1,98 @@
+# =============================================================================
+# Gitleaks Configuration
+# =============================================================================
+# Secret detection rules for the Atlas secure CI/CD pipeline.
+# Extends default rules with custom patterns for organization-specific secrets.
+#
+# Documentation: https://github.com/gitleaks/gitleaks
+# =============================================================================
+
+[extend]
+# Use default gitleaks rules as baseline
+useDefault = true
+
+# =============================================================================
+# Custom Rules
+# =============================================================================
+# Add organization-specific secret patterns here
+
+[[rules]]
+id = "custom-api-key"
+description = "Custom API Key Pattern"
+regex = '''(?i)(api[_-]?key|apikey)\s*[:=]\s*['"]?([a-zA-Z0-9_\-]{32,})['"]?'''
+secretGroup = 2
+entropy = 3.5
+keywords = ["api_key", "apikey", "api-key"]
+
+[[rules]]
+id = "custom-internal-token"
+description = "Internal Service Token"
+regex = '''(?i)(internal[_-]?token|service[_-]?token)\s*[:=]\s*['"]?([a-zA-Z0-9_\-]{20,})['"]?'''
+secretGroup = 2
+keywords = ["internal_token", "service_token"]
+
+[[rules]]
+id = "database-connection-string"
+description = "Database Connection String"
+regex = '''(?i)(mongodb|postgres|mysql|redis):\/\/[^\s'"]+'''
+keywords = ["mongodb", "postgres", "mysql", "redis"]
+
+[[rules]]
+id = "jwt-token"
+description = "JSON Web Token"
+regex = '''eyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*'''
+keywords = ["eyJ"]
+
+[[rules]]
+id = "private-key-header"
+description = "Private Key"
+regex = '''-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----'''
+keywords = ["BEGIN", "PRIVATE KEY"]
+
+# =============================================================================
+# Allowlist - False Positives
+# =============================================================================
+# Paths and patterns that should be ignored
+
+[allowlist]
+description = "Global allowlist"
+
+# Files that commonly contain example/test credentials
+paths = [
+    '''tests/fixtures/.*''',
+    '''docs/examples/.*''',
+    '''\.gitleaks\.toml$''',
+    '''\.gitleaksignore$''',
+    '''package-lock\.json$''',
+    '''yarn\.lock$''',
+    '''go\.sum$'''
+]
+
+# Regex patterns to ignore (false positives)
+regexes = [
+    '''example[_-]?key''',
+    '''test[_-]?secret''',
+    '''fake[_-]?token''',
+    '''placeholder''',
+    '''CHANGE_ME''',
+    '''your[_-]?api[_-]?key[_-]?here'''
+]
+
+# Specific commits to ignore (e.g., after rotation)
+# commits = [
+#     "abc123def456...",
+# ]
+
+# =============================================================================
+# Rule-specific Allowlists
+# =============================================================================
+
+# Allow generic-api-key in specific documentation files
+[[rules]]
+id = "generic-api-key"
+[rules.allowlist]
+paths = [
+    '''README\.md$''',
+    '''docs/.*\.md$''',
+    '''CONTRIBUTING\.md$'''
+]

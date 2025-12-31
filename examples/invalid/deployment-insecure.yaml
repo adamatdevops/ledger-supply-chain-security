@@ -1,0 +1,58 @@
+# =============================================================================
+# INSECURE Deployment Example - FOR TESTING ONLY
+# =============================================================================
+# This deployment intentionally violates multiple security policies.
+# Used to demonstrate policy enforcement and governance gates.
+#
+# Policy Violations:
+# - Missing required labels (team)
+# - Uses :latest tag
+# - Runs as root (no runAsNonRoot)
+# - Privileged container
+# - No resource limits
+# - Uses default service account
+# - Hardcoded secrets in environment
+# - Uses unapproved registry
+#
+# Test: conftest test examples/invalid/ -p src/policies/
+# Expected: FAIL with multiple violations
+# =============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: insecure-app
+  namespace: production
+  labels:
+    app: insecure-app
+    version: v1.0.0
+    # VIOLATION: Missing 'team' label
+spec:
+  replicas: 1  # VIOLATION: Single replica in production
+  selector:
+    matchLabels:
+      app: insecure-app
+  template:
+    metadata:
+      labels:
+        app: insecure-app
+        version: v1.0.0
+        # VIOLATION: Missing 'team' label in pod template
+    spec:
+      serviceAccountName: default  # VIOLATION: Using default service account
+      hostNetwork: true  # VIOLATION: Using host network
+      # VIOLATION: No securityContext with runAsNonRoot
+      containers:
+        - name: app
+          image: docker.io/nginx:latest  # VIOLATIONS: Unapproved registry + :latest tag
+          securityContext:
+            privileged: true  # VIOLATION: Privileged container
+            allowPrivilegeEscalation: true  # VIOLATION: Allows privilege escalation
+            # VIOLATION: No readOnlyRootFilesystem
+          # VIOLATION: No resource limits or requests
+          env:
+            - name: DB_PASSWORD
+              value: "supersecret123"  # VIOLATION: Hardcoded secret
+            - name: API_SECRET_KEY
+              value: "my-api-key"  # VIOLATION: Hardcoded secret
+          # VIOLATION: No liveness or readiness probes

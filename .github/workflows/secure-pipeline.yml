@@ -1,0 +1,471 @@
+# =============================================================================
+# Ledger Supply Chain Security Pipeline
+# =============================================================================
+# A supply chain security pipeline demonstrating SBOM, signing, and governance.
+#
+# Pipeline Stages:
+#   1. Code Quality    - Lint, format, unit tests
+#   2. Security Scan   - SAST, secrets, dependencies, licenses
+#   3. Build & Package - Docker build with metadata
+#   4. Container Sec   - Image scan, SBOM, signing
+#   5. Policy Check    - OPA/Rego policy validation
+#   6. Deploy Gates    - Environment promotion with approvals
+#
+# For production use:
+#   - Configure SNYK_TOKEN secret
+#   - Set up GitHub Environments with protection rules
+#   - Customize policy rules in src/policies/
+# =============================================================================
+
+name: Supply Chain Security Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Prevent concurrent runs on the same branch to avoid race conditions
+concurrency:
+  group: supply-chain-security-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  security-events: write
+  packages: write
+  id-token: write  # Required for Cosign keyless OIDC signing
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ============================================
+  # Stage 1: Code Quality
+  # ============================================
+  # Validates code quality before any security scanning.
+  # Fast feedback loop for developers on basic hygiene.
+  # ============================================
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run linter
+        run: pnpm run lint
+
+      - name: Run formatter check
+        run: pnpm run format:check
+
+      - name: Run unit tests
+        run: pnpm test
+
+  # ============================================
+  # Stage 2: Security Scanning
+  # ============================================
+  # Comprehensive security analysis:
+  # - Secret detection (Gitleaks)
+  # - SAST (Semgrep)
+  # - Dependency vulnerabilities (Snyk)
+  # - License compliance (Snyk)
+  #
+  # Results uploaded to GitHub Security tab via SARIF.
+  # ============================================
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    needs: code-quality
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history required for Gitleaks
+
+      # -----------------------------------------
+      # Secret Detection - ALWAYS BLOCKING
+      # Any detected secret fails the pipeline immediately
+      # -----------------------------------------
+      - name: Gitleaks Secret Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # -----------------------------------------
+      # SAST - Static Application Security Testing
+      # Detects code-level vulnerabilities
+      # -----------------------------------------
+      - name: Semgrep SAST Scan
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/owasp-top-ten
+
+      - name: Upload Semgrep SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+        continue-on-error: true
+
+      # -----------------------------------------
+      # Dependency Scanning (Snyk)
+      # Checks for known CVEs in dependencies
+      # Note: Tune severity-threshold per org policy
+      # -----------------------------------------
+      - name: Snyk Dependency Scan
+        id: snyk-deps
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --sarif-file-output=snyk-deps.sarif
+
+      - name: Upload Snyk Dependency results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk-deps.sarif
+          category: snyk-dependencies
+        continue-on-error: true
+
+      - name: Upload Snyk report artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snyk-dependency-report
+          path: snyk-deps.sarif
+          retention-days: 30
+
+      # -----------------------------------------
+      # License Compliance (Snyk)
+      # Enforces license policy for dependencies
+      # Note: Configure license policies in Snyk dashboard
+      #       or use .snyk policy file for org-specific rules
+      # -----------------------------------------
+      - name: Snyk License & Policy Check
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --all-projects --json-file-output=snyk-license.json
+          # Note: Use Snyk policy file (.snyk) for license rules
+          # Example: severity-threshold, ignore rules, license allow/deny lists
+
+      - name: Upload License report artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snyk-license-report
+          path: snyk-license.json
+          retention-days: 30
+
+      # -----------------------------------------
+      # Security Gate - Policy Enforcement Point
+      # Uncomment to enforce hard gates on findings
+      # -----------------------------------------
+      # - name: Enforce Security Policy Gate
+      #   if: always()
+      #   run: |
+      #     # Example: Parse SARIF and fail based on org policy
+      #     # if jq '.runs[].results | length > 0' snyk-deps.sarif; then
+      #     #   echo "::error::High severity vulnerabilities found"
+      #     #   exit 1
+      #     # fi
+      #     echo "Security gate check - customize per org policy"
+
+  # ============================================
+  # Stage 3: Build & Package
+  # ============================================
+  # Builds container image with:
+  # - Multi-stage Dockerfile
+  # - Build cache for performance
+  # - Immutable digest output for downstream stages
+  #
+  # Only runs on push to main (not PRs)
+  # ============================================
+  build:
+    name: Build & Package
+    runs-on: ubuntu-latest
+    needs: security-scan
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tags: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Generate consistent, meaningful image tags
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+
+      # Build with layer caching for faster rebuilds
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Note: For reproducible builds, consider:
+          # provenance: true
+          # sbom: true
+
+  # ============================================
+  # Stage 4: Container Security & Signing
+  # ============================================
+  # Post-build security validation:
+  # - Container vulnerability scan (Snyk)
+  # - SBOM generation (Syft/Anchore)
+  # - Keyless signing (Cosign + Sigstore)
+  # - SBOM attestation attached to image
+  #
+  # All operations use immutable digest, not tags.
+  # ============================================
+  container-security:
+    name: Container Security
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # -----------------------------------------
+      # Container Vulnerability Scan
+      # Scans the built image for OS and library CVEs
+      # Uses immutable digest for consistency
+      # -----------------------------------------
+      - name: Snyk Container Scan
+        uses: snyk/actions/docker@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }}'
+          args: --severity-threshold=high --file=Dockerfile --sarif-file-output=snyk-container.sarif
+
+      - name: Upload Container scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk-container.sarif
+          category: snyk-container
+        continue-on-error: true
+
+      - name: Upload Container scan artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snyk-container-report
+          path: snyk-container.sarif
+          retention-days: 30
+
+      # -----------------------------------------
+      # SBOM Generation
+      # Creates Software Bill of Materials in CycloneDX format
+      # Required for supply chain transparency
+      # -----------------------------------------
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }}'
+          format: cyclonedx-json
+          output-file: sbom.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.json
+          retention-days: 90  # Longer retention for compliance
+
+      # -----------------------------------------
+      # Image Signing (Cosign Keyless)
+      # Uses GitHub OIDC for keyless signing via Sigstore
+      # No key management required - identity from OIDC
+      # -----------------------------------------
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign container image (keyless)
+        env:
+          COSIGN_EXPERIMENTAL: "true"  # Enable keyless OIDC signing
+        run: |
+          cosign sign --yes \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }}
+
+      # -----------------------------------------
+      # SBOM Attestation
+      # Attaches SBOM as signed attestation to image
+      # Enables verification of software inventory
+      # -----------------------------------------
+      - name: Attach SBOM attestation
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        run: |
+          cosign attest --yes --predicate sbom.json \
+            --type cyclonedx \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }}
+
+  # ============================================
+  # Stage 5: Policy Validation
+  # ============================================
+  # Enforces "policy-as-code" on infrastructure artifacts.
+  # - OPA test: validates policy logic itself
+  # - Conftest: applies policies to manifests/configs
+  #
+  # Policies in src/policies/ define deployment rules.
+  # Examples/ contains sample manifests for validation.
+  # ============================================
+  policy-check:
+    name: Policy Validation
+    runs-on: ubuntu-latest
+    needs: container-security
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup OPA
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: latest
+
+      # Unit test the policies themselves
+      - name: Run policy unit tests
+        run: |
+          opa test src/policies/ -v
+
+      # Apply policies to example manifests
+      - name: Validate deployment policies
+        uses: docker://openpolicyagent/conftest:latest
+        with:
+          args: test examples/ -p src/policies/
+
+  # ============================================
+  # Deployment Gates
+  # ============================================
+  # Progressive deployment through environments:
+  #   dev → staging → production
+  #
+  # Each environment can have:
+  # - Required reviewers
+  # - Wait timers
+  # - Branch protection
+  # - Deployment branches
+  #
+  # Configure in: Settings → Environments
+  # ============================================
+
+  deploy-dev:
+    name: Deploy to Dev
+    runs-on: ubuntu-latest
+    needs: [container-security, policy-check]
+    environment: dev
+    steps:
+      # Note: Replace with actual deployment logic
+      # Examples: kubectl apply, helm upgrade, ArgoCD sync
+      - name: Deploy to dev environment
+        run: |
+          echo "Deploying to dev environment"
+          echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }}"
+          # kubectl set image deployment/app app=$IMAGE@$DIGEST
+          # helm upgrade app ./chart --set image.digest=$DIGEST
+          # argocd app sync app --revision $DIGEST
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: deploy-dev
+    environment: staging
+    steps:
+      - name: Deploy to staging environment
+        run: |
+          echo "Deploying to staging environment"
+          echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }}"
+
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    environment:
+      name: production
+      # Configure required reviewers in GitHub Environment settings
+    steps:
+      # Verify signature before production deployment
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Verify image signature
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        run: |
+          echo "Verifying image signature before production deployment..."
+          cosign verify \
+            --certificate-identity-regexp='.*' \
+            --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }}
+
+      - name: Deploy to production
+        run: |
+          echo "Deploying to production environment"
+          echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }}"

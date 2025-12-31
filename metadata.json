@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "ledger-supply-chain-security",
+  "displayName": "Ledger - Supply Chain Security Pipeline",
+  "version": "1.0.0",
+  "description": "A software supply chain security pipeline demonstrating SBOM generation, artifact signing, provenance attestation, and policy-as-code governance for regulated environments.",
+  "author": {
+    "name": "Adam Keinan",
+    "url": "https://github.com/adamkeinan"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adamkeinan/ledger-supply-chain-security"
+  },
+  "keywords": [
+    "devsecops",
+    "ci-cd",
+    "security",
+    "pipeline",
+    "github-actions",
+    "snyk",
+    "semgrep",
+    "gitleaks",
+    "cosign",
+    "sbom",
+    "policy-as-code",
+    "opa",
+    "rego",
+    "container-security",
+    "supply-chain-security",
+    "slsa",
+    "sigstore"
+  ],
+  "category": "DevSecOps",
+  "portfolioTags": [
+    "security",
+    "ci-cd",
+    "platform-engineering",
+    "devsecops"
+  ],
+  "targetIndustries": [
+    "fintech",
+    "healthcare",
+    "cybersecurity",
+    "enterprise"
+  ],
+  "technologies": {
+    "cicd": ["github-actions"],
+    "security": {
+      "sast": ["semgrep"],
+      "sca": ["snyk"],
+      "secrets": ["gitleaks"],
+      "container": ["snyk-container"],
+      "signing": ["cosign", "sigstore"],
+      "sbom": ["syft", "cyclonedx"],
+      "policy": ["opa", "conftest", "rego"]
+    },
+    "container": ["docker", "ghcr"],
+    "iac": ["terraform", "kubernetes"]
+  },
+  "compliance": {
+    "frameworks": ["slsa", "nist-ssdf", "owasp"],
+    "certifications": ["soc2", "hipaa", "pci-dss"],
+    "features": {
+      "sbom": true,
+      "signing": true,
+      "attestation": true,
+      "auditTrail": true,
+      "policyAsCode": true
+    }
+  },
+  "pipelineStages": [
+    {
+      "name": "code-quality",
+      "description": "Lint, format, unit tests",
+      "blocking": true
+    },
+    {
+      "name": "security-scan",
+      "description": "SAST, secrets, dependencies, licenses",
+      "blocking": true
+    },
+    {
+      "name": "build",
+      "description": "Docker build with metadata",
+      "blocking": true
+    },
+    {
+      "name": "container-security",
+      "description": "Image scan, SBOM, signing",
+      "blocking": true
+    },
+    {
+      "name": "policy-check",
+      "description": "OPA/Rego policy validation",
+      "blocking": true
+    },
+    {
+      "name": "deploy-gates",
+      "description": "Environment promotion with approvals",
+      "blocking": true
+    }
+  ],
+  "interviewTopics": [
+    "How do you integrate security into CI/CD?",
+    "What's your approach to shift-left security?",
+    "How do you handle compliance automation?",
+    "Walk me through your DevSecOps strategy",
+    "How do you balance security with developer velocity?",
+    "What's your approach to software supply chain security?"
+  ],
+  "documentation": {
+    "readme": "README.md",
+    "architecture": "docs/architecture.md",
+    "securityGates": "SECURITY_GATES.md",
+    "policyModel": "PIPELINE_POLICY_MODEL.md",
+    "threatModel": "THREAT_MODEL.md",
+    "adrs": "docs/adr/"
+  },
+  "status": "portfolio-ready",
+  "lastUpdated": "2024-12-31"
+}

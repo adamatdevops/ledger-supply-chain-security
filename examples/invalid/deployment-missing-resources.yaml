@@ -1,0 +1,50 @@
+# =============================================================================
+# Deployment Missing Resource Limits - FOR TESTING ONLY
+# =============================================================================
+# This deployment is mostly secure but missing resource constraints.
+# Demonstrates targeted policy violation.
+#
+# Policy Violations:
+# - No memory limits
+# - No CPU limits
+# - No memory requests
+# - No CPU requests
+#
+# Test: conftest test examples/invalid/ -p src/policies/
+# Expected: FAIL on resource constraint policies
+# =============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: no-limits-app
+  namespace: staging
+  labels:
+    app: no-limits-app
+    version: v1.0.0
+    team: platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: no-limits-app
+  template:
+    metadata:
+      labels:
+        app: no-limits-app
+        version: v1.0.0
+        team: platform
+    spec:
+      serviceAccountName: no-limits-app-sa
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: app
+          image: ghcr.io/acme-corp/app:v1.0.0
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          # VIOLATION: No resources block at all
+          ports:
+            - containerPort: 8080

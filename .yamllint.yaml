@@ -1,0 +1,151 @@
+# =============================================================================
+# Yamllint Configuration
+# =============================================================================
+# YAML linting rules for CI/CD workflows, Kubernetes manifests, and configs.
+#
+# Documentation: https://yamllint.readthedocs.io
+# =============================================================================
+
+extends: default
+
+# Ignore certain paths
+ignore: |
+  node_modules/
+  vendor/
+  .git/
+  dist/
+  build/
+
+rules:
+  # ---------------------------------------------------------------------------
+  # Line Length
+  # ---------------------------------------------------------------------------
+  # Allow longer lines for URLs, commands, and base64 content
+  line-length:
+    max: 200
+    level: warning
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: true
+
+  # ---------------------------------------------------------------------------
+  # Indentation
+  # ---------------------------------------------------------------------------
+  # Standard 2-space indentation
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+
+  # ---------------------------------------------------------------------------
+  # Truthy Values
+  # ---------------------------------------------------------------------------
+  # Allow various truthy value formats (yes/no, on/off, true/false)
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no', 'on', 'off']
+    check-keys: false
+
+  # ---------------------------------------------------------------------------
+  # Comments
+  # ---------------------------------------------------------------------------
+  # Require space after comment marker
+  comments:
+    require-starting-space: true
+    ignore-shebangs: true
+    min-spaces-from-content: 1
+
+  # ---------------------------------------------------------------------------
+  # Brackets
+  # ---------------------------------------------------------------------------
+  # Allow inline arrays
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+  # ---------------------------------------------------------------------------
+  # Braces
+  # ---------------------------------------------------------------------------
+  # Allow inline objects
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+  # ---------------------------------------------------------------------------
+  # Colons
+  # ---------------------------------------------------------------------------
+  # Standard colon spacing
+  colons:
+    max-spaces-before: 0
+    max-spaces-after: 1
+
+  # ---------------------------------------------------------------------------
+  # Commas
+  # ---------------------------------------------------------------------------
+  # Standard comma spacing
+  commas:
+    max-spaces-before: 0
+    min-spaces-after: 1
+    max-spaces-after: 1
+
+  # ---------------------------------------------------------------------------
+  # Hyphens
+  # ---------------------------------------------------------------------------
+  # Standard hyphen spacing for lists
+  hyphens:
+    max-spaces-after: 1
+
+  # ---------------------------------------------------------------------------
+  # Empty Lines
+  # ---------------------------------------------------------------------------
+  # Allow some flexibility with empty lines
+  empty-lines:
+    max: 2
+    max-start: 0
+    max-end: 1
+
+  # ---------------------------------------------------------------------------
+  # New Lines
+  # ---------------------------------------------------------------------------
+  # Require newline at end of file
+  new-line-at-end-of-file: enable
+
+  # ---------------------------------------------------------------------------
+  # Document Start
+  # ---------------------------------------------------------------------------
+  # Don't require explicit document start (---)
+  document-start: disable
+
+  # ---------------------------------------------------------------------------
+  # Document End
+  # ---------------------------------------------------------------------------
+  # Don't require explicit document end (...)
+  document-end: disable
+
+  # ---------------------------------------------------------------------------
+  # Key Duplicates
+  # ---------------------------------------------------------------------------
+  # Disallow duplicate keys
+  key-duplicates: enable
+
+  # ---------------------------------------------------------------------------
+  # Octal Values
+  # ---------------------------------------------------------------------------
+  # Warn on implicit octal values
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: false
+
+  # ---------------------------------------------------------------------------
+  # Quoted Strings
+  # ---------------------------------------------------------------------------
+  # Allow various quoting styles
+  quoted-strings:
+    quote-type: any
+    required: only-when-needed
+    extra-allowed: ['^[0-9]+$']  # Allow quoting numbers
+
+  # ---------------------------------------------------------------------------
+  # Float Values
+  # ---------------------------------------------------------------------------
+  # Require consistent float formatting
+  float-values:
+    require-numeral-before-decimal: true
