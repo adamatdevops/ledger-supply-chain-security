@@ -210,22 +210,35 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Find and install Node.js dependencies
+        run: |
+          # Find all directories containing package.json (excluding node_modules)
+          for pkg_dir in $(find . -name "package.json" -not -path "*/node_modules/*" -exec dirname {} \;); do
+            echo "Installing dependencies in: $pkg_dir"
+            cd "$pkg_dir"
+            pnpm install --frozen-lockfile --ignore-scripts 2>/dev/null || pnpm install --ignore-scripts
+            cd - > /dev/null
+          done
 
-      # pnpm audit
+      # pnpm audit on all projects
       - name: PNPM Audit
-        run: pnpm audit --audit-level ${{ env.SEVERITY_THRESHOLD }}
+        run: |
+          for pkg_dir in $(find . -name "package.json" -not -path "*/node_modules/*" -exec dirname {} \;); do
+            echo "Auditing: $pkg_dir"
+            cd "$pkg_dir"
+            pnpm audit --audit-level ${{ env.SEVERITY_THRESHOLD }} || true
+            cd - > /dev/null
+          done
         continue-on-error: true
 
-      # Snyk for Node
+      # Snyk for Node (scans all projects)
       - name: Snyk Node.js Scan
         uses: snyk/actions/node@master
         continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_SCAN_TOKEN }}
         with:
-          args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --sarif-file-output=snyk-node.sarif
+          args: --all-projects --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --sarif-file-output=snyk-node.sarif
 
       - name: Upload Snyk Node results
         uses: github/codeql-action/upload-sarif@v3
@@ -615,18 +628,44 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Find the first Dockerfile in the repo
+      - name: Locate Dockerfile
+        id: find-dockerfile
+        run: |
+          # Find first Dockerfile (prefer root, then src/app, then any)
+          if [[ -f "Dockerfile" ]]; then
+            df="Dockerfile"
+          elif [[ -f "src/app/Dockerfile" ]]; then
+            df="src/app/Dockerfile"
+          else
+            df=$(find . -type f -name "Dockerfile" -not -path "*/examples/invalid/*" -print -quit 2>/dev/null || true)
+          fi
+
+          if [[ -n "$df" ]]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "path=${df#./}" >> $GITHUB_OUTPUT
+            echo "context=$(dirname "${df#./}")" >> $GITHUB_OUTPUT
+            echo "Found Dockerfile: ${df#./}"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "path=" >> $GITHUB_OUTPUT
+            echo "context=." >> $GITHUB_OUTPUT
+            echo "No Dockerfile found"
+          fi
+
       # Hadolint - Dockerfile linting
       - name: Hadolint Dockerfile Lint
+        if: steps.find-dockerfile.outputs.exists == 'true'
         uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: Dockerfile
+          dockerfile: ${{ steps.find-dockerfile.outputs.path }}
           format: sarif
           output-file: hadolint.sarif
         continue-on-error: true
 
       - name: Upload Hadolint results
+        if: steps.find-dockerfile.outputs.exists == 'true'
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
         with:
           sarif_file: hadolint.sarif
           category: hadolint
@@ -634,21 +673,28 @@ jobs:
 
       # Build image for scanning
       - name: Build Docker image
-        run: docker build -t scan-target:latest .
+        if: steps.find-dockerfile.outputs.exists == 'true'
+        run: |
+          echo "Building from: ${{ steps.find-dockerfile.outputs.path }}"
+          echo "Context: ${{ steps.find-dockerfile.outputs.context }}"
+          docker build -t scan-target:latest \
+            -f "${{ steps.find-dockerfile.outputs.path }}" \
+            "${{ steps.find-dockerfile.outputs.context }}"
 
       # Snyk Container
       - name: Snyk Container Scan
+        if: steps.find-dockerfile.outputs.exists == 'true'
         uses: snyk/actions/docker@master
         continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_SCAN_TOKEN }}
         with:
           image: scan-target:latest
-          args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --file=Dockerfile --sarif-file-output=snyk-container.sarif
+          args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }} --file=${{ steps.find-dockerfile.outputs.path }} --sarif-file-output=snyk-container.sarif
 
       - name: Upload Snyk Container results
+        if: steps.find-dockerfile.outputs.exists == 'true'
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
         with:
           sarif_file: snyk-container.sarif
           category: snyk-container
@@ -656,11 +702,16 @@ jobs:
 
       # Dockle - Container best practices
       - name: Dockle Container Lint
+        if: steps.find-dockerfile.outputs.exists == 'true'
         uses: erzz/dockle-action@v1
         with:
           image: scan-target:latest
           failure-threshold: high
         continue-on-error: true
+
+      - name: Skip notice
+        if: steps.find-dockerfile.outputs.exists != 'true'
+        run: echo "No Dockerfile found - skipping container security scans"
 
   # ============================================
   # Infrastructure as Code Security

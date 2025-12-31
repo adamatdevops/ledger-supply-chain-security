@@ -75,7 +75,13 @@ regexes = [
     '''fake[_-]?token''',
     '''placeholder''',
     '''CHANGE_ME''',
-    '''your[_-]?api[_-]?key[_-]?here'''
+    '''your[_-]?api[_-]?key[_-]?here''',
+    # HEALTHCHECK commands with localhost URLs are not secrets
+    '''urllib\.request\.urlopen.*localhost''',
+    '''http\.get.*localhost''',
+    '''curl.*localhost''',
+    '''wget.*localhost''',
+    '''http://localhost'''
 ]
 
 # Specific commits to ignore (e.g., after rotation)
