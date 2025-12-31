@@ -3,14 +3,35 @@
 # =============================================================================
 # Exclude intentionally insecure examples from SAST scanning.
 # These files are tested by OPA/Conftest policy validation instead.
+#
+# Syntax: gitignore-style patterns
+# Docs: https://semgrep.dev/docs/ignoring-files-folders-code
 # =============================================================================
 
 # Test fixtures with intentional violations (validated by Conftest)
-examples/invalid/
+# Using multiple patterns to ensure matching
+examples/invalid
+examples/invalid/*
+examples/invalid/**
+**/examples/invalid/**
 
-# Node modules (if not already ignored)
-node_modules/
+# Node modules
+node_modules
+node_modules/**
 
 # Test fixtures and mocks
-**/tests/fixtures/
-**/test/fixtures/
+tests/fixtures
+tests/fixtures/**
+test/fixtures
+test/fixtures/**
+
+# Lock files and generated content
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+go.sum
+
+# Build outputs
+dist
+build
+out
