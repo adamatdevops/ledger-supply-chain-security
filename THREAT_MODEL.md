@@ -151,7 +151,7 @@ This document provides a lightweight threat analysis for the Atlas secure CI/CD 
 4. Malicious code runs with build privileges
 
 **Controls**:
-- Dependency scanning (Trivy)
+- Dependency scanning (Snyk)
 - Lock files with hashes
 - SBOM tracking
 - Staged rollout of dependency updates

@@ -81,8 +81,8 @@ This repo demonstrates integration with:
 - **CI/CD**: GitHub Actions
 - **SAST**: Semgrep, CodeQL
 - **Secret Detection**: Gitleaks, TruffleHog
-- **Dependency Scanning**: Trivy, Snyk, Dependabot
-- **Container Scanning**: Trivy, Grype
+- **Dependency Scanning**: Snyk, Dependabot
+- **Container Scanning**: Snyk Container, Grype
 - **SBOM**: Syft, CycloneDX
 - **Policy**: OPA, Conftest, Rego
 - **Signing**: Cosign, Sigstore

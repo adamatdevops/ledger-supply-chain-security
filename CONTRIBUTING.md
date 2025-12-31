@@ -28,7 +28,7 @@ main (protected)
 
 Examples:
   feature/add-sbom-generation
-  fix/trivy-cache-issue
+  fix/snyk-cache-issue
   docs/update-architecture
 ```
 
@@ -60,9 +60,9 @@ Refs: #42
 ```
 
 ```
-fix(trivy): update to v0.48 for CVE-2024-XXXX fix
+fix(snyk): update action to latest for improved scanning
 
-Security update to address false negative in Trivy < 0.48
+Security update to address scanning improvements in Snyk action
 ```
 
 ```
@@ -260,7 +260,7 @@ For significant decisions, create an ADR:
 ```
 docs/adr/
   0001-choose-github-actions.md
-  0002-trivy-over-alternatives.md
+  0002-snyk-for-vulnerability-scanning.md
   0003-semgrep-for-sast.md
 ```
 

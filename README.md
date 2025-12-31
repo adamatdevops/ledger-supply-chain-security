@@ -69,7 +69,7 @@ Most teams bolt security on as an afterthought. Ledger demonstrates how to **des
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    Stage 4: Container Security                       │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                  │
-│  │   Trivy     │  │   SBOM      │  │   Policy    │                  │
+│  │   Snyk      │  │   SBOM      │  │   Policy    │                  │
 │  │   Scan      │  │ Generation  │  │ Validation  │                  │
 │  └─────────────┘  └─────────────┘  └─────────────┘                  │
 └─────────────────────────────────────────────────────────────────────┘
@@ -139,7 +139,7 @@ ledger-supply-chain-security/
 │   │   └── security-gates.svg
 │   └── adr/
 │       ├── 0001-choose-github-actions.md
-│       ├── 0002-trivy-over-alternatives.md
+│       ├── 0002-snyk-for-vulnerability-scanning.md
 │       └── 0003-semgrep-for-sast.md
 ├── .github/
 │   ├── workflows/
@@ -201,7 +201,7 @@ Push to any branch to trigger the secure pipeline.
 
 ### Known Limitations
 
-- **False positives**: Semgrep/Trivy may flag non-issues
+- **False positives**: Semgrep/Snyk may flag non-issues
 - **Scan time**: Full security scan adds 3-8 minutes
 - **Tool coverage**: No single tool catches everything
 - **Context blindness**: Tools don't understand business logic

@@ -42,8 +42,8 @@ Jobs:
     - checkout
     - sast-scan (Semgrep)
     - secret-scan (Gitleaks)
-    - dependency-scan (Trivy)
-    - license-scan (Trivy)
+    - dependency-scan (Snyk)
+    - license-scan (Snyk)
 
   results:
     - aggregate findings
@@ -105,7 +105,7 @@ HEALTHCHECK --interval=30s CMD ["/app/healthcheck.js"]
 Jobs:
   container-scan:
     - pull built image
-    - trivy image scan
+    - snyk container scan
     - check against policy
 
   verify:
@@ -402,7 +402,7 @@ To optimize pipeline performance:
 | Cache | Content | TTL |
 |-------|---------|-----|
 | Dependency cache | npm/pip/go modules | 7 days |
-| Trivy DB | Vulnerability database | 24 hours |
+| Snyk DB | Vulnerability database | 24 hours |
 | Semgrep rules | Rule definitions | 24 hours |
 | Docker layers | Build layers | Per branch |
 
@@ -411,7 +411,7 @@ To optimize pipeline performance:
 - uses: actions/cache@v4
   with:
     path: |
-      ~/.cache/trivy
+      ~/.cache/snyk
       ~/.semgrep/cache
     key: security-tools-${{ runner.os }}-${{ hashFiles('.tool-versions') }}
 ```
@@ -476,7 +476,7 @@ All pipeline logs shipped to central logging:
   "timestamp": "2024-03-15T10:30:00Z",
   "pipeline_id": "12345",
   "stage": "security-scan",
-  "tool": "trivy",
+  "tool": "snyk",
   "findings": 3,
   "severity_breakdown": {
     "critical": 0,
