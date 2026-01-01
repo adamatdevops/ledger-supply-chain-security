@@ -116,7 +116,7 @@ test_allow_gcr_registry if {
 }
 
 test_allow_ecr_registry if {
-    approved_registry with input as {"image": {"name": "123456789.dkr.ecr.us-east-1.amazonaws.com/app:v1.0.0"}}
+    approved_registry with input as {"image": {"name": "123456789012.dkr.ecr.us-east-1.amazonaws.com/app:v1.0.0"}}
 }
 
 # =============================================================================

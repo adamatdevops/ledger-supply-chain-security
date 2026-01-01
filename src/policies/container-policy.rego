@@ -117,7 +117,7 @@ approved_registry if {
 }
 
 approved_registry if {
-    endswith(input.image.name, ".dkr.ecr.us-east-1.amazonaws.com/")
+    contains(input.image.name, ".dkr.ecr.")
 }
 
 deny contains msg if {
