@@ -431,8 +431,9 @@ jobs:
   deploy-dev:
     name: Deploy to Dev
     runs-on: ubuntu-latest
-    needs: [container-security, policy-check]
-    if: always()
+    needs: [build, container-security, policy-check]
+    # Only deploy if build succeeded and produced an image
+    if: always() && needs.build.result == 'success' && needs.build.outputs.image-digest != ''
     environment: dev
     steps:
       # Note: Replace with actual deployment logic
@@ -448,8 +449,9 @@ jobs:
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: deploy-dev
-    if: always()
+    needs: [build, deploy-dev]
+    # Only deploy if build succeeded and dev deployment succeeded
+    if: always() && needs.build.result == 'success' && needs.deploy-dev.result == 'success'
     environment: staging
     steps:
       - name: Deploy to staging environment
@@ -460,8 +462,9 @@ jobs:
   deploy-prod:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: deploy-staging
-    if: always()
+    needs: [build, deploy-staging]
+    # Only deploy if build succeeded and staging deployment succeeded
+    if: always() && needs.build.result == 'success' && needs.deploy-staging.result == 'success'
     environment:
       name: production
       # Configure required reviewers in GitHub Environment settings
