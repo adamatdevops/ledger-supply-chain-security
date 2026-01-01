@@ -1,4 +1,4 @@
-# Ledger — Supply Chain Security Pipeline
+# Ledger — Supply Chain Security Workflow
 
 <!-- Pipeline Status Badges -->
 [![Supply Chain Security Pipeline](https://github.com/adamatdevops/ledger-supply-chain-security/actions/workflows/secure-pipeline.yml/badge.svg)](https://github.com/adamatdevops/ledger-supply-chain-security/actions/workflows/secure-pipeline.yml)
