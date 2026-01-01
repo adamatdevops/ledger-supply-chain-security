@@ -7,11 +7,13 @@
 
 package kubernetes.deployment
 
+import rego.v1
+
 # =============================================================================
 # Test: Security Context - runAsNonRoot
 # =============================================================================
 
-test_deny_missing_run_as_non_root {
+test_deny_missing_run_as_non_root if {
     msg := "Deployment must set runAsNonRoot: true"
     msg in deny with input as {
         "kind": "Deployment",
@@ -25,7 +27,7 @@ test_deny_missing_run_as_non_root {
     }
 }
 
-test_allow_run_as_non_root {
+test_allow_run_as_non_root if {
     count(deny) == 0 with input as valid_deployment
 }
 
@@ -33,7 +35,7 @@ test_allow_run_as_non_root {
 # Test: Security Context - Privileged
 # =============================================================================
 
-test_deny_privileged_container {
+test_deny_privileged_container if {
     count(deny) > 0 with input as {
         "kind": "Deployment",
         "metadata": {"labels": {"app": "test", "version": "v1", "team": "platform"}},
@@ -65,7 +67,7 @@ test_deny_privileged_container {
 # Test: Security Context - Privilege Escalation
 # =============================================================================
 
-test_deny_privilege_escalation {
+test_deny_privilege_escalation if {
     count(deny) > 0 with input as {
         "kind": "Deployment",
         "metadata": {"labels": {"app": "test", "version": "v1", "team": "platform"}},
@@ -97,7 +99,7 @@ test_deny_privilege_escalation {
 # Test: Resource Limits
 # =============================================================================
 
-test_deny_missing_memory_limit {
+test_deny_missing_memory_limit if {
     count(deny) > 0 with input as {
         "kind": "Deployment",
         "metadata": {"labels": {"app": "test", "version": "v1", "team": "platform"}},
@@ -125,7 +127,7 @@ test_deny_missing_memory_limit {
     }
 }
 
-test_deny_missing_cpu_limit {
+test_deny_missing_cpu_limit if {
     count(deny) > 0 with input as {
         "kind": "Deployment",
         "metadata": {"labels": {"app": "test", "version": "v1", "team": "platform"}},
@@ -153,7 +155,7 @@ test_deny_missing_cpu_limit {
     }
 }
 
-test_deny_missing_memory_request {
+test_deny_missing_memory_request if {
     count(deny) > 0 with input as {
         "kind": "Deployment",
         "metadata": {"labels": {"app": "test", "version": "v1", "team": "platform"}},
@@ -185,7 +187,7 @@ test_deny_missing_memory_request {
 # Test: Image Tags
 # =============================================================================
 
-test_deny_latest_tag {
+test_deny_latest_tag if {
     msg := "Container 'app' must not use :latest tag"
     msg in deny with input as {
         "kind": "Deployment",
@@ -214,7 +216,7 @@ test_deny_latest_tag {
     }
 }
 
-test_deny_no_tag {
+test_deny_no_tag if {
     count(deny) > 0 with input as {
         "kind": "Deployment",
         "metadata": {"labels": {"app": "test", "version": "v1", "team": "platform"}},
@@ -246,7 +248,7 @@ test_deny_no_tag {
 # Test: Approved Registry
 # =============================================================================
 
-test_deny_unapproved_registry {
+test_deny_unapproved_registry if {
     count(deny) > 0 with input as {
         "kind": "Deployment",
         "metadata": {"labels": {"app": "test", "version": "v1", "team": "platform"}},
@@ -274,15 +276,15 @@ test_deny_unapproved_registry {
     }
 }
 
-test_allow_ghcr_registry {
+test_allow_ghcr_registry if {
     approved_registry("ghcr.io/org/app:v1.0.0")
 }
 
-test_allow_gcr_registry {
+test_allow_gcr_registry if {
     approved_registry("gcr.io/project/app:v1.0.0")
 }
 
-test_allow_ecr_registry {
+test_allow_ecr_registry if {
     approved_registry("123456789.dkr.ecr.us-east-1.amazonaws.com/app:v1.0.0")
 }
 
@@ -290,7 +292,7 @@ test_allow_ecr_registry {
 # Test: Required Labels
 # =============================================================================
 
-test_deny_missing_app_label {
+test_deny_missing_app_label if {
     msg := "Deployment must have label: app"
     msg in deny with input as {
         "kind": "Deployment",
@@ -307,7 +309,7 @@ test_deny_missing_app_label {
     }
 }
 
-test_deny_missing_version_label {
+test_deny_missing_version_label if {
     msg := "Deployment must have label: version"
     msg in deny with input as {
         "kind": "Deployment",
@@ -324,7 +326,7 @@ test_deny_missing_version_label {
     }
 }
 
-test_deny_missing_team_label {
+test_deny_missing_team_label if {
     msg := "Deployment must have label: team"
     msg in deny with input as {
         "kind": "Deployment",
@@ -345,7 +347,7 @@ test_deny_missing_team_label {
 # Test: Service Account
 # =============================================================================
 
-test_deny_default_service_account {
+test_deny_default_service_account if {
     msg := "Deployment should not use the default service account"
     msg in deny with input as {
         "kind": "Deployment",
@@ -367,7 +369,7 @@ test_deny_default_service_account {
 # Test: Host Configuration
 # =============================================================================
 
-test_deny_host_network {
+test_deny_host_network if {
     msg := "Deployment must not use host network"
     msg in deny with input as {
         "kind": "Deployment",
@@ -385,7 +387,7 @@ test_deny_host_network {
     }
 }
 
-test_deny_host_pid {
+test_deny_host_pid if {
     msg := "Deployment must not use host PID namespace"
     msg in deny with input as {
         "kind": "Deployment",
@@ -403,7 +405,7 @@ test_deny_host_pid {
     }
 }
 
-test_deny_host_ipc {
+test_deny_host_ipc if {
     msg := "Deployment must not use host IPC namespace"
     msg in deny with input as {
         "kind": "Deployment",
@@ -425,7 +427,7 @@ test_deny_host_ipc {
 # Test: Environment Variables with Secrets
 # =============================================================================
 
-test_deny_password_in_env {
+test_deny_password_in_env if {
     count(deny) > 0 with input as {
         "kind": "Deployment",
         "metadata": {"labels": {"app": "test", "version": "v1", "team": "platform"}},
@@ -458,7 +460,7 @@ test_deny_password_in_env {
 # Test: Production Replicas
 # =============================================================================
 
-test_deny_single_replica_in_production {
+test_deny_single_replica_in_production if {
     msg := "Production deployments must have at least 2 replicas"
     msg in deny with input as {
         "kind": "Deployment",
@@ -479,7 +481,7 @@ test_deny_single_replica_in_production {
     }
 }
 
-test_allow_multiple_replicas_in_production {
+test_allow_multiple_replicas_in_production if {
     not deny["Production deployments must have at least 2 replicas"] with input as {
         "kind": "Deployment",
         "metadata": {
@@ -503,7 +505,7 @@ test_allow_multiple_replicas_in_production {
 # Test: Probes (Warnings)
 # =============================================================================
 
-test_warn_missing_liveness_probe {
+test_warn_missing_liveness_probe if {
     count(warn) > 0 with input as {
         "kind": "Deployment",
         "spec": {
@@ -519,7 +521,7 @@ test_warn_missing_liveness_probe {
     }
 }
 
-test_warn_missing_readiness_probe {
+test_warn_missing_readiness_probe if {
     count(warn) > 0 with input as {
         "kind": "Deployment",
         "spec": {
@@ -606,6 +608,6 @@ valid_deployment := {
     }
 }
 
-test_valid_deployment_passes {
+test_valid_deployment_passes if {
     count(deny) == 0 with input as valid_deployment
 }

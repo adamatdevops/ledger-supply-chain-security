@@ -1,6 +1,10 @@
 # Ledger — Supply Chain Security Pipeline
 
-<!-- Badges -->
+<!-- Pipeline Status Badges -->
+[![Supply Chain Security Pipeline](https://github.com/adamatdevops/ledger-supply-chain-security/actions/workflows/secure-pipeline.yml/badge.svg)](https://github.com/adamatdevops/ledger-supply-chain-security/actions/workflows/secure-pipeline.yml)
+[![Multi-Language Security Scan](https://github.com/adamatdevops/ledger-supply-chain-security/actions/workflows/multi-language-security.yml/badge.svg)](https://github.com/adamatdevops/ledger-supply-chain-security/actions/workflows/multi-language-security.yml)
+
+<!-- Feature Badges -->
 [![Secure Pipeline](https://img.shields.io/badge/Pipeline-Supply%20Chain%20Security-00875A?style=flat-square&logo=github-actions&logoColor=white)](/.github/workflows/secure-pipeline.yml)
 [![Security Scan](https://img.shields.io/badge/Security-Snyk%20%7C%20Semgrep%20%7C%20Gitleaks-6C47FF?style=flat-square&logo=snyk&logoColor=white)](#security-gates)
 [![Policy as Code](https://img.shields.io/badge/Policy-OPA%20%2F%20Rego-7D9AAA?style=flat-square&logo=open-policy-agent&logoColor=white)](/src/policies)
