@@ -199,25 +199,6 @@ Push to any branch to trigger the secure pipeline.
 
 ---
 
-## Interview Discussion Points
-
-This repository demonstrates:
-
-1. **Security architecture thinking** — not just tool usage
-2. **Trade-off analysis** — understanding tool limitations
-3. **Compliance awareness** — audit trails, policy gates
-4. **Platform engineering** — reusable, consistent patterns
-5. **DevSecOps maturity** — security as code, not afterthought
-
-Key questions this repo helps answer:
-
-> "How do you integrate security into CI/CD?"
-> "What's your approach to shift-left security?"
-> "How do you handle compliance in automated pipelines?"
-> "Walk me through your DevSecOps strategy."
-
----
-
 ## Related Resources
 
 - [OWASP CI/CD Security](https://owasp.org/www-project-devsecops-guideline/)
