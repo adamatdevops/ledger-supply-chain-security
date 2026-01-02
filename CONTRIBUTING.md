@@ -1,4 +1,4 @@
-# Contributing to Atlas Secure CI/CD Governance
+# Contributing to Ledger Supply Chain Security
 
 This document outlines the development workflow, standards, and expectations for contributing to this repository.
 

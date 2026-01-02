@@ -1,6 +1,6 @@
 # Security Gates Configuration
 
-This document details the security gates implemented in the Atlas pipeline, their configuration, and enforcement behavior.
+This document details the security gates implemented in the Ledger pipeline, their configuration, and enforcement behavior.
 
 ---
 
@@ -297,7 +297,7 @@ Build Image → Generate SBOM → Sign Image → Attach SBOM → Push
 apiVersion: policy.sigstore.dev/v1beta1
 kind: ClusterImagePolicy
 metadata:
-  name: atlas-signed-images
+  name: ledger-signed-images
 spec:
   images:
     - glob: "ghcr.io/example-org/*"

@@ -1,6 +1,6 @@
 # Pipeline Policy Model
 
-This document describes the policy framework that governs the Atlas secure CI/CD pipeline — how decisions are made, enforced, and evolved.
+This document describes the policy framework that governs the Ledger supply chain security pipeline — how decisions are made, enforced, and evolved.
 
 ---
 
@@ -15,7 +15,7 @@ This document describes the policy framework that governs the Atlas secure CI/CD
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    Platform Policy                           │
-│    (Atlas pipeline defaults, gate configurations)            │
+│    (Ledger pipeline defaults, gate configurations)           │
 └─────────────────────────────────────────────────────────────┘
                             │
                             ▼

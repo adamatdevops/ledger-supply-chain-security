@@ -1,6 +1,6 @@
 # Threat Model
 
-This document provides a lightweight threat analysis for the Atlas secure CI/CD pipeline, identifying potential threats and the controls that address them.
+This document provides a lightweight threat analysis for the Ledger supply chain security pipeline, identifying potential threats and the controls that address them.
 
 ---
 

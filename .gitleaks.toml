@@ -1,7 +1,7 @@
 # =============================================================================
 # Gitleaks Configuration
 # =============================================================================
-# Secret detection rules for the Atlas secure CI/CD pipeline.
+# Secret detection rules for the Ledger supply chain security pipeline.
 # Extends default rules with custom patterns for organization-specific secrets.
 #
 # Documentation: https://github.com/gitleaks/gitleaks

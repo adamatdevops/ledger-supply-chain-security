@@ -1,6 +1,6 @@
 # Risk Notes
 
-This document captures operational risks, limitations, and mitigation strategies for the Atlas secure CI/CD pipeline.
+This document captures operational risks, limitations, and mitigation strategies for the Ledger supply chain security pipeline.
 
 ---
 

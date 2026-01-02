@@ -5,7 +5,7 @@ set -euo pipefail
 # Run this before pushing to catch issues early
 
 echo "=========================================="
-echo "  Atlas Local Security Scan"
+echo "  Ledger Local Security Scan"
 echo "=========================================="
 
 # Colors for output

@@ -1,6 +1,6 @@
 # Tests
 
-This directory contains all tests for the atlas-secure-cicd-governance project.
+This directory contains all tests for the ledger-supply-chain-security project.
 
 ## Directory Structure
 

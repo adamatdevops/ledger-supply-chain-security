@@ -1,8 +1,8 @@
-# Detailed Architecture — Atlas Secure CI/CD Governance
+# Detailed Architecture — Ledger Supply Chain Security
 
 ## Overview
 
-Atlas is a security-first CI/CD pipeline architecture implementing defense-in-depth through multiple scanning stages, policy gates, and artifact signing.
+Ledger is a security-first CI/CD pipeline architecture implementing defense-in-depth through multiple scanning stages, policy gates, and artifact signing.
 
 ---
 
