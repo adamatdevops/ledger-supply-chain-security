@@ -136,8 +136,6 @@ The application serves as a **realistic workload** to exercise the pipeline end-
 
 The purpose of this sample app is not to act as a product service, but to provide a **controlled execution surface** for demonstrating a secure software supply-chain flow in a way that mirrors real enterprise environments.
 
-This ensures the project showcases a **true operational pipeline** — not just a collection of tools, but a complete end-to-end security governance pattern.
-
 ---
 
 ## Quick Start
